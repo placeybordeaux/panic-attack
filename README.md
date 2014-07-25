@@ -4,6 +4,7 @@ panic-attack eventually supposed to be a tool that will run through your go code
     //TODO handle error
 
 to
+
     data, err := GetData()
     if err != nil {
         panic(err)
