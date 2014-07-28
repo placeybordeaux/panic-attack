@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"os"
@@ -54,8 +55,13 @@ func main() {
 	g = make(map[string]map[string]bool)
 	ast.Walk(g, file)
 	for pack, f := range g {
-		path, _, _ := findImport(pack, f)
+		path, b, err := findImport(pack, f)
+		spew.Dump(path)
 		spew.Dump(loadExports(path))
+		spew.Dump(b)
+		spew.Dump(err)
+		p, err := build.Import(path, "", build.FindOnly)
+		fmt.Printf("Needs to check package %s for functions %v", p.Dir, f)
 	}
 
 }
