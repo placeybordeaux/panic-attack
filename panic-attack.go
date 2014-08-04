@@ -44,16 +44,19 @@ func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 			switch t := n.(type) {
 			case *ast.Ident:
 				if t.Name == "_" {
-					fun, ok := ty.Rhs[0].(*ast.CallExpr).Fun.(*ast.SelectorExpr)
+					callExpr, ok := ty.Rhs[0].(*ast.CallExpr)
 					if ok {
-						packageName := fun.X.(*ast.Ident).Name
-						funcName := fun.Sel.Name
-						funcMap, ok := g[packageName]
-						if !ok {
-							g[packageName] = make(map[string]argument)
-							funcMap, _ = g[packageName]
+						fun, ok := callExpr.Fun.(*ast.SelectorExpr)
+						if ok {
+							packageName := fun.X.(*ast.Ident).Name
+							funcName := fun.Sel.Name
+							funcMap, ok := g[packageName]
+							if !ok {
+								g[packageName] = make(map[string]argument)
+								funcMap, _ = g[packageName]
+							}
+							funcMap[funcName] = argument{i, int(t.Pos()), t}
 						}
-						funcMap[funcName] = argument{i, int(t.Pos()), t}
 					}
 				}
 			}
@@ -76,28 +79,18 @@ func main() {
 	var g Gatherer
 	g = make(map[string]map[string]argument)
 	ast.Walk(g, file)
-	for pack, f := range g {
-		path, _, _ := findImport(pack, intMapToBoolMap(f))
-		p, _ := build.Import(path, "", build.FindOnly)
-		files, _ := filepath.Glob(p.Dir + "/*.go")
-		s := Searcher(f)
-		for _, filee := range files {
-			fset = token.NewFileSet()
-			astFile, _ := parser.ParseFile(fset, filee, nil, 0)
-			ast.Walk(s, astFile)
-		}
-	}
+	g.trimNonErrors()
 
 	args := make(arguments, 0)
 	//name them err and collect them
 	for _, m := range g {
 		for _, arg := range m {
-			arg.ident.Name = "err"
+			arg.ident.Name = "e"
 			args = append(args, arg)
 		}
 	}
 	sort.Sort(args)
-	fset = token.NewFileSet()
+	//fset = token.NewFileSet()
 	buff := bytes.NewBuffer(make([]byte, 0))
 	printer.Fprint(buff, fset, file)
 	s := buff.String()
@@ -109,9 +102,23 @@ func main() {
 	fmt.Println(s)
 }
 
-type Searcher map[string]argument
+func (g *Gatherer) trimNonErrors() {
+	for pack, f := range *g {
+		path, _, _ := findImport(pack, intMapToBoolMap(f))
+		p, _ := build.Import(path, "", build.FindOnly) //find the import's path
+		files, _ := filepath.Glob(p.Dir + "/*.go")     //all files in this import
+		s := Trimmer(f)
+		for _, file := range files {
+			fset := token.NewFileSet()
+			astFile, _ := parser.ParseFile(fset, file, nil, 0)
+			ast.Walk(s, astFile)
+		}
+	}
+}
 
-func (s Searcher) Visit(node ast.Node) (w ast.Visitor) {
+type Trimmer map[string]argument
+
+func (s Trimmer) Visit(node ast.Node) (w ast.Visitor) {
 	switch t := node.(type) {
 	case *ast.FuncDecl:
 		temp, ok := s[t.Name.Name]
