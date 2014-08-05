@@ -1,15 +1,34 @@
-panic-attack eventually supposed to be a tool that will run through your go code and transform lines such as
+#panic-attack has reached v0.1. 
+This means it might possibily work, but you would be a fool to run it automatically.
 
-    data, _ := GetData()
-    //TODO handle error
+when run panic-attack will transform code like this:
+
+    func critical_path() {
+        data, _ := GetData()
+        //TODO handle error
+        return data
+    }
 
 to
 
-    data, err := GetData()
+    func critical_path() {
+        data, err := GetData()
     if err != nil {
         panic(err)
     }
+        //TODO handle error
+        return data
+    }
 
-I have found myself typing that bit of code too often.
+I have found myself typing that bit of code too often, so I made this tool.
 
-right now it can find functions that assign anything to _ . Next is to parse discovery the function signature of that given function.
+
+# TODO
+
+* Identify unchecked errors in local packages
+
+* Find edge cases where an error is not detected (parser.ParseFile comes to mind)
+
+* Handle := vs = properly
+
+* Handle multiple files or even packages
