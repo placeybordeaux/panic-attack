@@ -89,7 +89,10 @@ func main() {
 	}
 	sort.Sort(args)
 	//fset = token.NewFileSet()
-	buff, _ := ioutil.ReadFile(os.Args[1])
+	buff, err := ioutil.ReadFile(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 	s := string(buff)
 	//Now we insert the panic!
 	for _, arg := range args {
@@ -103,12 +106,21 @@ func main() {
 func (g *Gatherer) trimNonErrors() {
 	for pack, f := range *g {
 		path, _, _ := findImport(pack, intMapToBoolMap(f))
-		p, _ := build.Import(path, "", build.FindOnly) //find the import's path
-		files, _ := filepath.Glob(p.Dir + "/*.go")     //all files in this import
+		p, err := build.Import(path, "", build.FindOnly) //find the import's path
+		if err != nil {
+			panic(err)
+		}
+		files, err := filepath.Glob(p.Dir + "/*.go") //all files in this import
+		if err != nil {
+			panic(err)
+		}
 		s := Trimmer(f)
 		for _, file := range files {
 			fset := token.NewFileSet()
-			astFile, _ := parser.ParseFile(fset, file, nil, 0)
+			astFile, err := parser.ParseFile(fset, file, nil, 0)
+			if err != nil {
+				panic(err)
+			}
 			ast.Walk(s, astFile)
 		}
 	}
