@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
 	"go/build"
 	"go/parser"
-	"go/printer"
 	"go/token"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,19 +84,18 @@ func main() {
 	//name them err and collect them
 	for _, m := range g {
 		for _, arg := range m {
-			arg.ident.Name = "e"
 			args = append(args, arg)
 		}
 	}
 	sort.Sort(args)
 	//fset = token.NewFileSet()
-	buff := bytes.NewBuffer(make([]byte, 0))
-	printer.Fprint(buff, fset, file)
-	s := buff.String()
+	buff, _ := ioutil.ReadFile(os.Args[1])
+	s := string(buff)
 	//Now we insert the panic!
 	for _, arg := range args {
 		nextLine := strings.Index(s[arg.posInFile:], "\n")
-		s = s[:nextLine+arg.posInFile] + "\nif err != nil {\npanic(err)\n}" + s[nextLine+arg.posInFile:]
+		s = s[:nextLine+arg.posInFile] + "\nif err != nil {\npanic(err)\n}" + s[nextLine+arg.posInFile:] //insert the err
+		s = s[:arg.posInFile-1] + "err" + s[arg.posInFile:]
 	}
 	fmt.Println(s)
 }
