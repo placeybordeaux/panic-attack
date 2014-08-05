@@ -75,9 +75,9 @@ func intMapToBoolMap(in map[string]argument) map[string]bool {
 func main() {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, os.Args[1], nil, 0)
-if err != nil {
-panic(err)
-}
+	if err != nil {
+		panic(err)
+	}
 	var g Gatherer
 	g = make(map[string]map[string]argument)
 	ast.Walk(g, file)
@@ -145,4 +145,3 @@ func (s Trimmer) Visit(node ast.Node) (w ast.Visitor) {
 	}
 	return s
 }
-

@@ -32,3 +32,9 @@ I have found myself typing that bit of code too often, so I made this tool.
 * Handle := vs = properly
 
 * Handle multiple files or even packages
+
+* Verify that tool doesn't need multiple passes
+
+* Move this list into github issues
+
+* Handle indentions properly
