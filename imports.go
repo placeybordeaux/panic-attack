@@ -12,14 +12,10 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
-
-	"code.google.com/p/go.tools/astutil"
 )
 
 // Options specifies options for processing files.
@@ -30,66 +26,6 @@ type Options struct {
 	Comments  bool // Print comments (true if nil *Options provided)
 	TabIndent bool // Use tabs for indent (true if nil *Options provided)
 	TabWidth  int  // Tab width (8 if nil *Options provided)
-}
-
-// Process formats and adjusts imports for the provided file.
-// If opt is nil the defaults are used.
-func Process(filename string, src []byte, opt *Options) ([]byte, error) {
-	if opt == nil {
-		opt = &Options{Comments: true, TabIndent: true, TabWidth: 8}
-	}
-
-	fileSet := token.NewFileSet()
-	file, adjust, err := parse(fileSet, filename, src, opt)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = fixImports(fileSet, file)
-	if err != nil {
-		return nil, err
-	}
-
-	sortImports(fileSet, file)
-	imps := astutil.Imports(fileSet, file)
-
-	var spacesBefore []string // import paths we need spaces before
-	for _, impSection := range imps {
-		// Within each block of contiguous imports, see if any
-		// import lines are in different group numbers. If so,
-		// we'll need to put a space between them so it's
-		// compatible with gofmt.
-		lastGroup := -1
-		for _, importSpec := range impSection {
-			importPath, _ := strconv.Unquote(importSpec.Path.Value)
-			groupNum := importGroup(importPath)
-			if groupNum != lastGroup && lastGroup != -1 {
-				spacesBefore = append(spacesBefore, importPath)
-			}
-			lastGroup = groupNum
-		}
-
-	}
-
-	printerMode := printer.UseSpaces
-	if opt.TabIndent {
-		printerMode |= printer.TabIndent
-	}
-	printConfig := &printer.Config{Mode: printerMode, Tabwidth: opt.TabWidth}
-
-	var buf bytes.Buffer
-	err = printConfig.Fprint(&buf, fileSet, file)
-	if err != nil {
-		return nil, err
-	}
-	out := buf.Bytes()
-	if adjust != nil {
-		out = adjust(src, out)
-	}
-	if len(spacesBefore) > 0 {
-		out = addImportSpaces(bytes.NewReader(out), spacesBefore)
-	}
-	return out, nil
 }
 
 // parse parses src, which was read from filename,
