@@ -73,10 +73,25 @@ func intMapToBoolMap(in map[string]argument) map[string]bool {
 }
 
 func main() {
+	var s string
+	//for no file passed in
+	if len(os.Args) == 1 {
+		b, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
+		}
+		s, _ = ParseSource(string(b))
+	} else {
+		s, _ = ParseFile(os.Args[1])
+	}
+	fmt.Println(s)
+}
+
+func ParseSource(source string) (string, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, os.Args[1], nil, 0)
+	file, err := parser.ParseFile(fset, "", source, 0)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	var g Gatherer
 	g = make(map[string]map[string]argument)
@@ -92,18 +107,23 @@ func main() {
 	}
 	sort.Sort(args)
 	//fset = token.NewFileSet()
-	buff, err := ioutil.ReadFile(os.Args[1])
-	if err != nil {
-		panic(err)
-	}
-	s := string(buff)
+	s := source
 	//Now we insert the panic!
 	for _, arg := range args {
 		nextLine := strings.Index(s[arg.posInFile:], "\n")
 		s = s[:nextLine+arg.posInFile] + "\nif err != nil {\npanic(err)\n}" + s[nextLine+arg.posInFile:] //insert the err
 		s = s[:arg.posInFile-1] + "err" + s[arg.posInFile:]
 	}
-	fmt.Println(s)
+	return s, nil
+
+}
+
+func ParseFile(path string) (string, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return ParseSource(string(b))
 }
 
 func (g *Gatherer) trimNonErrors() {
