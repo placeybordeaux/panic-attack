@@ -32,7 +32,7 @@ For vim users:
 
 * Get real flags
 
-* * have a linting flag
+ * have a linting flag
 
 * Identify unchecked errors in local packages
 
