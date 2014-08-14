@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type argument struct {
@@ -34,7 +36,10 @@ func (a arguments) Less(i, j int) bool {
 	return a[i].posInFile > a[j].posInFile
 }
 
-type Gatherer map[string]map[string]argument
+type Gatherer struct {
+	packageName string
+	assigns     map[string]map[string]argument
+}
 
 func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 	switch ty := node.(type) {
@@ -46,13 +51,21 @@ func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 					callExpr, ok := ty.Rhs[0].(*ast.CallExpr)
 					if ok {
 						fun, ok := callExpr.Fun.(*ast.SelectorExpr)
-						if ok {
+						if ok { //case where it's a different package
 							packageName := fun.X.(*ast.Ident).Name
 							funcName := fun.Sel.Name
-							funcMap, ok := g[packageName]
+							funcMap, ok := g.assigns[packageName]
 							if !ok {
-								g[packageName] = make(map[string]argument)
-								funcMap, _ = g[packageName]
+								g.assigns[packageName] = make(map[string]argument)
+								funcMap, _ = g.assigns[packageName]
+							}
+							funcMap[funcName] = argument{i, int(t.Pos()), t}
+						} else {
+							funcName := callExpr.Fun.(*ast.Ident).Name
+							funcMap, ok := g.assigns[""]
+							if !ok {
+								g.assigns[g.packageName] = make(map[string]argument)
+								funcMap, _ = g.assigns[""]
 							}
 							funcMap[funcName] = argument{i, int(t.Pos()), t}
 						}
@@ -93,14 +106,15 @@ func ParseSource(source string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var g Gatherer
-	g = make(map[string]map[string]argument)
+	g := Gatherer{packageName: file.Name.Name}
+	spew.Dump(g)
+	g.assigns = make(map[string]map[string]argument)
 	ast.Walk(g, file)
 	g.trimNonErrors()
 
 	args := make(arguments, 0)
 	//name them err and collect them
-	for _, m := range g {
+	for _, m := range g.assigns {
 		for _, arg := range m {
 			args = append(args, arg)
 		}
@@ -127,7 +141,7 @@ func ParseFile(path string) (string, error) {
 }
 
 func (g *Gatherer) trimNonErrors() {
-	for pack, f := range *g {
+	for pack, f := range g.assigns {
 		path, _, _ := findImport(pack, intMapToBoolMap(f))
 		p, err := build.Import(path, "", build.FindOnly) //find the import's path
 		if err != nil {
@@ -148,6 +162,9 @@ func (g *Gatherer) trimNonErrors() {
 		}
 	}
 }
+
+func (g *Gatherer) trimLocalNonErrors() {
+
 
 type Trimmer map[string]argument
 

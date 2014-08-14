@@ -71,3 +71,44 @@ panic(err)
 		t.Fatalf("got %s expected %s", output, expected)
 	}
 }
+
+func TestLocal(t *testing.T) {
+	input := `package main
+
+import "fmt"
+
+func a() (int, error) {
+	return 1, nil
+}
+
+func b() {
+	t, _ := a()
+	fmt.Println(t)
+}
+`
+
+	expected := `package main
+
+import "fmt"
+
+func a() (int, error) {
+	return 1, nil
+}
+
+func b() {
+	t, err := a()
+if err != nil {
+panic(err)
+}
+	fmt.Println(t)
+}
+`
+
+	output, err := ParseSource(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != expected {
+		t.Fatalf("got %s expected %s", output, expected)
+	}
+}
