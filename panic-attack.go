@@ -128,9 +128,16 @@ func ParseFile(path string) (string, error) {
 
 func (g *Gatherer) trimNonErrors() {
 	for pack, f := range *g {
-		path, _, _ := findImport(pack, intMapToBoolMap(f))
+		path, _, err := findImport(pack, intMapToBoolMap(f))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to find the import path for %v\n, skipping it", pack)
+			continue
+		}
 		p, err := build.Import(path, "", build.FindOnly) //find the import's path
 		if err != nil {
+			if err.Error() == `import "": invalid import path` {
+				continue
+			}
 			panic(err)
 		}
 		files, err := filepath.Glob(p.Dir + "/*.go") //all files in this import
