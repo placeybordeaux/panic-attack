@@ -23,10 +23,13 @@ func example1() {
 	b, _ := strconv.ParseBool("bad input")
 	fmt.Println(b)
 	_, _ = strconv.ParseInt("the number one", 64, 10)
+	_ = d()
 }
 
 //comments
-func d() {}
+func d() error {
+	return nil
+}
 
 func e() {}
 

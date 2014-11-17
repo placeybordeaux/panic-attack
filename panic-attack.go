@@ -46,9 +46,18 @@ func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 					callExpr, ok := ty.Rhs[0].(*ast.CallExpr)
 					if ok {
 						fun, ok := callExpr.Fun.(*ast.SelectorExpr)
-						if ok {
+						if ok { //Is contained in another package
 							packageName := fun.X.(*ast.Ident).Name
 							funcName := fun.Sel.Name
+							funcMap, ok := g[packageName]
+							if !ok {
+								g[packageName] = make(map[string]argument)
+								funcMap, _ = g[packageName]
+							}
+							funcMap[funcName] = argument{i, int(t.Pos()), t}
+						} else { //Is local
+							packageName := "LOCAL"
+							funcName := callExpr.Fun.(*ast.Ident).Name
 							funcMap, ok := g[packageName]
 							if !ok {
 								g[packageName] = make(map[string]argument)
