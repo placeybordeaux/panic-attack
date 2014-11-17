@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type argument struct {
@@ -105,6 +107,7 @@ func ParseSource(source string) (string, error) {
 	var g Gatherer
 	g = make(map[string]map[string]argument)
 	ast.Walk(g, file)
+	spew.Dump(g)
 	g.trimNonErrors()
 
 	args := make(arguments, 0)
@@ -137,21 +140,30 @@ func ParseFile(path string) (string, error) {
 
 func (g *Gatherer) trimNonErrors() {
 	for pack, f := range *g {
-		path, _, err := findImport(pack, intMapToBoolMap(f))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to find the import path for %v\n, skipping it", pack)
-			continue
-		}
-		p, err := build.Import(path, "", build.FindOnly) //find the import's path
-		if err != nil {
-			if err.Error() == `import "": invalid import path` {
+		var files []string
+		var err error
+		if pack == "LOCAL" {
+			files, err = filepath.Glob("*.go") //all files in this import
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			path, _, err := findImport(pack, intMapToBoolMap(f))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to find the import path for %v\n, skipping it", pack)
 				continue
 			}
-			panic(err)
-		}
-		files, err := filepath.Glob(p.Dir + "/*.go") //all files in this import
-		if err != nil {
-			panic(err)
+			p, err := build.Import(path, "", build.FindOnly) //find the import's path
+			if err != nil {
+				if err.Error() == `import "": invalid import path` {
+					continue
+				}
+				panic(err)
+			}
+			files, err = filepath.Glob(p.Dir + "/*.go") //all files in this import
+			if err != nil {
+				panic(err)
+			}
 		}
 		s := Trimmer(f)
 		for _, file := range files {
