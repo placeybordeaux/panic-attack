@@ -19,6 +19,7 @@ type argument struct {
 	pos       int
 	posInFile int
 	ident     *ast.Ident
+	verified  bool
 }
 
 type arguments []argument
@@ -56,7 +57,7 @@ func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 								g[packageName] = make(map[string]argument)
 								funcMap, _ = g[packageName]
 							}
-							funcMap[funcName] = argument{i, int(t.Pos()), t}
+							funcMap[funcName] = argument{i, int(t.Pos()), t, false}
 						} else { //Is local
 							packageName := "LOCAL"
 							funcName := callExpr.Fun.(*ast.Ident).Name
@@ -65,7 +66,7 @@ func (g Gatherer) Visit(node ast.Node) (w ast.Visitor) {
 								g[packageName] = make(map[string]argument)
 								funcMap, _ = g[packageName]
 							}
-							funcMap[funcName] = argument{i, int(t.Pos()), t}
+							funcMap[funcName] = argument{i, int(t.Pos()), t, false}
 						}
 					}
 				}
@@ -122,6 +123,9 @@ func ParseSource(source string) (string, error) {
 	s := source
 	//Now we insert the panic!
 	for _, arg := range args {
+		if arg.verified == false {
+			continue
+		}
 		nextLine := strings.Index(s[arg.posInFile:], "\n")
 		s = s[:nextLine+arg.posInFile] + "\nif err != nil {\npanic(err)\n}" + s[nextLine+arg.posInFile:] //insert the err
 		s = s[:arg.posInFile-1] + "err" + s[arg.posInFile:]
@@ -186,8 +190,9 @@ func (s Trimmer) Visit(node ast.Node) (w ast.Visitor) {
 		pos := temp.pos
 		if ok {
 			typePos := t.Type.Results.List[pos].Type.(*ast.Ident)
-			if typePos.Name != "error" {
-				delete(s, t.Name.Name)
+			if typePos.Name == "error" {
+				temp.verified = true
+				s[t.Name.Name] = temp
 			}
 		}
 	}

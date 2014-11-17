@@ -1,4 +1,4 @@
-#panic-attack has reached v0.1.1. 
+#panic-attack has reached v0.1.2. 
 This means it might possibily work, but you would be a fool to run it automatically.
 
 when run panic-attack will transform code like this:

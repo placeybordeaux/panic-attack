@@ -24,8 +24,7 @@ func example1() {
 	fmt.Println(b)
 	_, _ = strconv.ParseInt("the number one", 64, 10)
 	_, _, _ = d()
-	_, _, err := f()
-	fmt.Println(err)
+	_, _, _ = f()
 	_ = e()
 }
 
